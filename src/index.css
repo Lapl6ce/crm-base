@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   Signal — token layer (CONTEXT.md §4)
+   Channels, not hex, so Tailwind's /opacity modifiers work and Settings can
+   repaint the accent at runtime. Anything a client forks is a variable here.
+   --------------------------------------------------------------------------- */
+:root {
+  --color-ink-900: 23 25 28; /* #17191C graphite */
+  --color-ink-700: 42 46 51; /* #2A2E33 body text */
+  --color-ink-500: 84 91 99; /* #545B63 */
+  --color-ink-300: 138 145 153; /* #8A9199 mute — meta only, never < 16px */
+  --color-ink-150: 200 205 210; /* #C8CDD2 */
+  --color-ink-100: 225 229 233; /* #E1E5E9 hairlines */
+
+  --color-accent-600: 229 64 45; /* #E5402D */
+  --color-accent-500: 255 78 58; /* #FF4E3A coral — "act on this" */
+  --color-accent-100: 255 233 229; /* #FFE9E5 */
+
+  --color-positive-600: 11 99 98; /* #0B6362 */
+  --color-positive-500: 14 124 123; /* #0E7C7B teal — won / done */
+  --color-positive-100: 220 239 238; /* #DCEFEE */
+
+  --color-warn-500: 184 115 11; /* #B8730B mid-heat, never an action */
+  --color-warn-100: 251 238 218; /* #FBEEDA */
+
+  --color-danger-600: 164 35 26; /* #A4231A darker than coral on purpose */
+  --color-danger-100: 249 224 222;
+
+  --color-surface-app: 241 243 245; /* #F1F3F5 */
+  --color-surface-card: 255 255 255;
+  --color-surface-sunken: 234 237 240;
+
+  /* Focus ring flips to white on graphite surfaces; see .on-dark below. */
+  --focus-ring: var(--color-accent-500);
+}
+
+.on-dark {
+  --focus-ring: 255 255 255;
+}
+
+@layer base {
+  * {
+    border-color: rgb(var(--color-ink-100));
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-surface-app font-sans text-base text-ink-700 antialiased;
+  }
+
+  /* One focus treatment, everywhere, always visible. Never outline: none. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--focus-ring));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display text-ink-900;
+  }
+
+  /* Money, dates and counts line up in columns. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* The one place a scrollbar is styled: dense tables and the Kanban board. */
+  .scroll-slim {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--color-ink-150)) transparent;
+  }
+  .scroll-slim::-webkit-scrollbar {
+    height: 10px;
+    width: 10px;
+  }
+  .scroll-slim::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--color-ink-150));
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+}
+
+/* CONTEXT.md §4: motion is opt-in, not opt-out. Anything that moves is gated
+   on prefers-reduced-motion: no-preference at the source; this is the backstop
+   for third-party components (dnd-kit, Recharts) we do not author. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
