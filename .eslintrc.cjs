@@ -39,7 +39,18 @@ module.exports = {
   parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
   plugins: ['react-refresh'],
   rules: {
-    'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+    /* A few files legitimately export a component plus the hook or helper that
+       drives it (Toast + toast(), DataProvider + useData()). Splitting them
+       would scatter one idea across two files to satisfy a dev-server nicety,
+       so those names are allowed by name rather than silenced with comments.
+       `lint` runs at --max-warnings 0: a warning here has to mean something. */
+    'react-refresh/only-export-components': [
+      'warn',
+      {
+        allowConstantExport: true,
+        allowExportNames: ['toast', 'useToastStore', 'useData', 'useCommandBarShortcut'],
+      },
+    ],
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     'no-restricted-imports': restrict(MOCK, DEMO),
   },

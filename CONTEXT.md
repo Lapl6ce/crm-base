@@ -3,8 +3,8 @@
 The reusable foundation. This repo is **forked per client**, not shipped as-is.
 Read this before touching code; it is the contract every module honors.
 
-**Status:** Phase 1 complete (scaffold, data layer, tokens, shell, primitives).
-Phase 2 (Contacts & Companies) not started.
+**Status:** Phases 1–2 complete (scaffold, data layer, tokens, shell, primitives;
+Contacts & Companies end to end). Phase 3 (Deals Pipeline) not started.
 
 ---
 
@@ -19,6 +19,9 @@ Phase 2 (Contacts & Companies) not started.
 | Repo API shape | `Promise`-returning, always async | A REST/DB adapter drops in without touching a single caller |
 | Auth | None. A user switcher sets `currentUserId`; role gates UI only | Spec: demo-only roles |
 | Dark mode | Not in v1, but every color is a CSS var so a theme is additive | Avoids half-done theming |
+| Record detail | Its own route (`/contacts/:id`), with create/edit in a Drawer over it | A record is something you send someone a link to; editing keeps the record in view |
+| Cross-module hand-off | URL params — `/contacts?new=1&companyId=…` | Modules cannot import each other's forms (§3). The URL is a contract neither module owns, so neither has to change when the other does |
+| List query state | One `useListQuery` hook, shared by every list screen | Search/filter/sort/paginate behaving *identically* everywhere is worth more than any screen's local cleverness |
 
 ---
 
@@ -247,6 +250,11 @@ src/
     types.ts                  # entities, ListQuery, Repository, DataProvider
     repositories.ts           # per-entity interface specializations
     DataProvider.tsx          # React context + useData()
+    useResource.ts            # the four-state read hook + useMutation
+    useSession.ts             # current user + settings
+    useListQuery.ts           # search/filter/sort/page state -> a ListQuery
+    formErrors.ts             # ValidationError -> a form's field map
+    bus.ts                    # change bus: repos announce writes, hooks refetch
     mock/
       index.ts                # createMockProvider(): DataProvider
       storage.ts              # localStorage read/write, namespaced, versioned
@@ -260,16 +268,27 @@ src/
     DemoBadge.tsx
     useDemoMode.ts            # the ONLY file core code imports, via one guarded call
   modules/
-    contacts/                 # list, detail, form, hooks, module-local types
-    companies/
+    contacts/                 # Phase 2
+      ContactsPage.tsx        # list: search / filter / sort / paginate
+      ContactDetailPage.tsx   # route /contacts/:id
+      ContactForm.tsx         # create + edit, one Drawer
+      useContacts.ts          # every read and write this module performs
+      contactMeta.ts          # status wording/tone, default sort
+    companies/                # Phase 2, same five files
+      CompaniesPage.tsx
+      CompanyDetailPage.tsx
+      CompanyForm.tsx
+      useCompanies.ts
+      companyMeta.ts          # size labels, address + website formatting
     deals/
     tasks/
     dashboard/
     settings/
     users/
-  components/                 # shared primitives: Button, Input, Select, Table,
+  components/                 # shared primitives: Button, Field, Select, Table,
                               # Drawer, Modal, Tag, Avatar, EmptyState, HeatStripe,
-                              # CommandBar, Toast, ConfirmDialog, Skeleton
+                              # Toast, ConfirmDialog, Skeleton, Pagination,
+                              # ListToolbar, TagInput, DescriptionList, OwnerSelect
   layout/                     # AppShell, Sidebar, Topbar, PageHeader
   lib/
     tokens.ts                 # design tokens as TS (mirrors tailwind.config)
@@ -382,7 +401,15 @@ heat ramp — follows. No rebuild, no token edits.
    interfaces + mock adapter + localStorage, AppShell, router, shared
    primitives. The architecture rules in §2 and §3 are enforced by
    `no-restricted-imports` in `.eslintrc.cjs`, not by convention.
-2. **Contacts & Companies** — list (search/filter/sort/paginate), detail, forms.
+2. ~~**Contacts & Companies**~~ — ✅ done. Both list screens run every
+   narrowing through `ListQuery` and back into the repository — never by
+   filtering an array in the browser, because only one of those two still
+   works against a real backend. Detail views are routes; forms are Drawers.
+   Validation is the adapter's: the form submits, catches `ValidationError`
+   and renders its field map, which is the same path a server response takes.
+   Contacts carry the heat stripe (neglect, from `lastActivityByContact`);
+   companies deliberately do not — a company has no due date of its own, and a
+   stripe with nothing behind it is decoration pretending to be signal.
 3. **Deals Pipeline** — dnd-kit board, stage config wiring, deal detail.
 4. **Tasks + Notes/Timeline** — task list, the merged ActivityEvent feed.
 5. **Dashboard & Reports** — 4 KPI cards, 3 Recharts views.

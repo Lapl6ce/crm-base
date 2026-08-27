@@ -3,6 +3,8 @@ import { AppShell } from '@/layout/AppShell';
 import { NotFoundPage } from '@/layout/NotFoundPage';
 import { RequireRole } from '@/layout/RequireRole';
 import { CompaniesPage } from '@/modules/companies/CompaniesPage';
+import { CompanyDetailPage } from '@/modules/companies/CompanyDetailPage';
+import { ContactDetailPage } from '@/modules/contacts/ContactDetailPage';
 import { ContactsPage } from '@/modules/contacts/ContactsPage';
 import { DashboardPage } from '@/modules/dashboard/DashboardPage';
 import { ReportsPage } from '@/modules/dashboard/ReportsPage';
@@ -20,7 +22,11 @@ export function AppRoutes() {
       <Route element={<AppShell />}>
         <Route index element={<DashboardPage />} />
         <Route path="contacts" element={<ContactsPage />} />
+        {/* Detail views are routes, not drawers: a record you can send someone
+            a link to is worth more than one that only exists over a list. */}
+        <Route path="contacts/:id" element={<ContactDetailPage />} />
         <Route path="companies" element={<CompaniesPage />} />
+        <Route path="companies/:id" element={<CompanyDetailPage />} />
         <Route path="deals" element={<DealsPage />} />
         <Route path="tasks" element={<TasksPage />} />
         <Route
