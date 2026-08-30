@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useMutation, useResource } from '@/data/useResource';
 import { useSession } from '@/data/useSession';
 import type { CompanyCreate, CompanyUpdate } from '@/data/repositories';
-import type { Company, Contact, ID, ListQuery, User } from '@/data/types';
+import type { Company, Contact, Deal, ID, ListQuery, User } from '@/data/types';
 
 /* Every read and write the Companies module performs.
  *
@@ -58,6 +58,8 @@ export function useCompanyLookups() {
 export interface CompanyDetail {
   company: Company | null;
   contacts: Contact[];
+  /** Read through the data layer; this module may not import Deals (§3). */
+  deals: Deal[];
   owner: User | null;
 }
 
@@ -66,15 +68,20 @@ export function useCompanyDetail(id: ID | undefined) {
   const { users } = useSession();
 
   const state = useResource(
-    async (provider): Promise<{ company: Company | null; contacts: Contact[] }> => {
-      if (!id) return { company: null, contacts: [] };
+    async (
+      provider,
+    ): Promise<{ company: Company | null; contacts: Contact[]; deals: Deal[] }> => {
+      if (!id) return { company: null, contacts: [], deals: [] };
       const company = await provider.companies.get(id);
-      if (!company) return { company: null, contacts: [] };
-      const contacts = await provider.contacts.listByCompany(company.id);
-      return { company, contacts };
+      if (!company) return { company: null, contacts: [], deals: [] };
+      const [contacts, deals] = await Promise.all([
+        provider.contacts.listByCompany(company.id),
+        provider.deals.listByCompany(company.id),
+      ]);
+      return { company, contacts, deals };
     },
     [id],
-    { watch: ['companies', 'contacts'], enabled: Boolean(id) },
+    { watch: ['companies', 'contacts', 'deals'], enabled: Boolean(id) },
   );
 
   const company = state.data?.company ?? null;
@@ -83,6 +90,7 @@ export function useCompanyDetail(id: ID | undefined) {
     contacts: [...(state.data?.contacts ?? [])].sort((a, b) =>
       `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`),
     ),
+    deals: state.data?.deals ?? [],
     owner: users.find((u) => u.id === company?.ownerId) ?? null,
   };
 

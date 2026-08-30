@@ -1,20 +1,23 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ActivityTimeline } from '@/components/ActivityTimeline';
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
 import { Card, CardBody, CardHeader } from '@/components/Card';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { DescriptionItem, DescriptionList } from '@/components/DescriptionList';
 import { EmptyState, ErrorState } from '@/components/EmptyState';
-import { HeatStripe } from '@/components/HeatStripe';
-import { IconChevronLeft, IconTrash } from '@/components/icons';
+import { HeatLabel, HeatStripe } from '@/components/HeatStripe';
+import { IconChevronLeft, IconPlus, IconTrash } from '@/components/icons';
+import { NotesPanel } from '@/components/NotesPanel';
+import { RecordRow } from '@/components/RecordRow';
 import { Skeleton } from '@/components/Skeleton';
 import { Tag } from '@/components/Tag';
 import { toast } from '@/components/Toast';
 import { useSession } from '@/data/useSession';
 import { PageHeader } from '@/layout/PageHeader';
-import { formatDate, formatDateTime, formatRelative, fullName } from '@/lib/format';
-import { contactHeat } from '@/lib/heat';
+import { formatCurrency, formatDate, formatDateTime, formatRelative, fullName } from '@/lib/format';
+import { contactHeat, dealHeat, taskHeat } from '@/lib/heat';
 import { can } from '@/lib/rbac';
 import { CONTACT_STATUS_LABEL, CONTACT_STATUS_TONE } from './contactMeta';
 import { ContactForm } from './ContactForm';
@@ -30,14 +33,14 @@ import { useContactDetail, useContactMutations } from './useContacts';
 export function ContactDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useSession();
+  const { user, stages } = useSession();
   const { detail, loading, error, refresh } = useContactDetail(id);
   const { remove } = useContactMutations();
 
   const [editOpen, setEditOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const { contact, company, owner, lastActivityAt } = detail;
+  const { contact, company, owner, deals, tasks, lastActivityAt } = detail;
 
   if (loading) return <DetailSkeleton />;
   if (error) return <ErrorState description={error.message} onRetry={refresh} />;
@@ -58,6 +61,8 @@ export function ContactDetailPage() {
   const heat = contactHeat({ lastActivityAt });
   const canEdit = can(user, 'contacts.edit');
   const canDelete = can(user, 'contacts.delete');
+  const canEditDeals = can(user, 'deals.edit');
+  const canEditTasks = can(user, 'tasks.edit');
 
   const onDelete = async () => {
     try {
@@ -209,19 +214,134 @@ export function ContactDetailPage() {
             </CardBody>
           </Card>
 
-          {/* Deals, tasks and the merged timeline are Phases 3 and 4. The slot
-              is here now so the page does not get re-laid-out when they land. */}
           <Card>
-            <CardHeader title="Deals, tasks & timeline" />
-            <CardBody>
-              <EmptyState
-                size="sm"
-                title="Arriving in Phases 3 and 4"
-                description="This contact's deals, open tasks and merged activity feed appear here. The data layer already records the events they will read."
-              />
-            </CardBody>
+            <CardHeader
+              title={`Deals (${deals.length})`}
+              action={
+                canEditDeals && (
+                  <Button
+                    size="sm"
+                    icon={<IconPlus size={14} />}
+                    /* Hand-off by URL again: Deals owns its form, this module
+                       only says who the deal is for. */
+                    onClick={() =>
+                      navigate(
+                        `/deals?new=1&contactId=${contact.id}` +
+                          (contact.companyId ? `&companyId=${contact.companyId}` : ''),
+                      )
+                    }
+                  >
+                    Add
+                  </Button>
+                )
+              }
+            />
+            {deals.length === 0 ? (
+              <CardBody>
+                <EmptyState
+                  size="sm"
+                  title="No deals with this person"
+                  description="When you start something with them, it will be listed here."
+                  action={
+                    canEditDeals && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() =>
+                          navigate(
+                            `/deals?new=1&contactId=${contact.id}` +
+                              (contact.companyId ? `&companyId=${contact.companyId}` : ''),
+                          )
+                        }
+                      >
+                        New deal
+                      </Button>
+                    )
+                  }
+                />
+              </CardBody>
+            ) : (
+              <ul className="divide-y divide-ink-100">
+                {deals.map((deal) => (
+                  <li key={deal.id}>
+                    <RecordRow
+                      to={`/deals/${deal.id}`}
+                      heat={dealHeat(deal)}
+                      title={deal.title}
+                      subtitle={stages.find((s) => s.id === deal.stageId)?.name}
+                      trailing={formatCurrency(deal.value, deal.currency)}
+                      trailingHint={<HeatLabel heat={dealHeat(deal)} />}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card>
+            <CardHeader
+              title={`Open tasks (${tasks.length})`}
+              action={
+                canEditTasks && (
+                  <Button
+                    size="sm"
+                    icon={<IconPlus size={14} />}
+                    onClick={() => navigate(`/tasks?new=1&contactId=${contact.id}`)}
+                  >
+                    Add
+                  </Button>
+                )
+              }
+            />
+            {tasks.length === 0 ? (
+              <CardBody>
+                <EmptyState
+                  size="sm"
+                  title="Nothing outstanding"
+                  description="No open tasks for this person."
+                  action={
+                    canEditTasks && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => navigate(`/tasks?new=1&contactId=${contact.id}`)}
+                      >
+                        Add a task
+                      </Button>
+                    )
+                  }
+                />
+              </CardBody>
+            ) : (
+              <ul className="divide-y divide-ink-100">
+                {tasks.map((task) => (
+                  <li key={task.id}>
+                    {/* No `to`: a task has no page of its own. */}
+                    <RecordRow
+                      heat={taskHeat(task)}
+                      title={task.title}
+                      subtitle={task.dueDate ? `Due ${formatDate(task.dueDate)}` : 'No due date'}
+                      trailingHint={<HeatLabel heat={taskHeat(task)} />}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
           </Card>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="overflow-hidden">
+          <CardHeader title="Notes" />
+          <NotesPanel entityType="contact" entityId={contact.id} canWrite={canEdit} />
+        </Card>
+        <Card className="overflow-hidden">
+          <CardHeader title="Timeline" />
+          {/* Merged by the repository: this person's own events plus everything
+              that happened on their deals and tasks (CONTEXT.md §1). */}
+          <ActivityTimeline entityType="contact" entityId={contact.id} className="py-2" />
+        </Card>
       </div>
 
       <ContactForm open={editOpen} onClose={() => setEditOpen(false)} contact={contact} />

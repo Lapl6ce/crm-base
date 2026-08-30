@@ -6,6 +6,8 @@ import { applyAccent } from '@/lib/tokens';
 import { useSession } from '@/data/useSession';
 import { Toaster } from '@/components/Toast';
 import { CommandBar, useCommandBarShortcut } from './CommandBar';
+import { ErrorBoundary } from './ErrorBoundary';
+import { RouteAnnouncer } from './RouteAnnouncer';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { primaryNav, secondaryNav, type NavItem } from './navigation';
@@ -39,14 +41,25 @@ export function AppShell() {
     .filter((item) => item.mobile && (!item.requires || can(user, item.requires)))
     .slice(0, 5);
 
+  const companyName = settings?.company.name ?? 'CRM';
+
   return (
     <div className="flex min-h-dvh bg-surface-app">
+      {/* First thing in the tab order, visible only when focused: a keyboard
+          user should not have to tab through the whole nav on every page. */}
+      <a
+        href="#main"
+        className="sr-only left-3 top-3 z-[80] rounded bg-ink-900 px-3 py-2 text-base font-medium text-white focus:not-sr-only focus:fixed"
+      >
+        Skip to content
+      </a>
+      <RouteAnnouncer companyName={companyName} />
       {/* md: icon rail, lg: full */}
       <div className="sticky top-0 hidden h-dvh md:block lg:hidden">
-        <Sidebar user={user} companyName={settings?.company.name ?? 'CRM'} collapsed />
+        <Sidebar user={user} companyName={companyName} collapsed />
       </div>
       <div className="sticky top-0 hidden h-dvh lg:block">
-        <Sidebar user={user} companyName={settings?.company.name ?? 'CRM'} collapsed={false} />
+        <Sidebar user={user} companyName={companyName} collapsed={false} />
       </div>
 
       {/* Below md: slide-over nav */}
@@ -60,7 +73,7 @@ export function AppShell() {
           <div className="relative h-full w-sidebar shadow-lg">
             <Sidebar
               user={user}
-              companyName={settings?.company.name ?? 'CRM'}
+              companyName={companyName}
               collapsed={false}
               onNavigate={() => setMobileNavOpen(false)}
             />
@@ -79,9 +92,16 @@ export function AppShell() {
 
         <main
           id="main"
-          className="mx-auto w-full max-w-[100rem] flex-1 px-3 py-5 pb-20 sm:px-5 md:pb-6"
+          /* -1 so RouteAnnouncer can move focus here after a navigation, without
+             adding a stop to the normal tab order. */
+          tabIndex={-1}
+          className="mx-auto w-full max-w-[100rem] flex-1 px-3 py-5 pb-20 outline-none sm:px-5 md:pb-6"
         >
-          <Outlet />
+          {/* Keyed on the path: a screen that failed does not stay failed once
+              you navigate somewhere else. */}
+          <ErrorBoundary key={location.pathname} label={location.pathname}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
 
         <MobileNav items={mobileItems} />

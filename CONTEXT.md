@@ -3,8 +3,9 @@
 The reusable foundation. This repo is **forked per client**, not shipped as-is.
 Read this before touching code; it is the contract every module honors.
 
-**Status:** Phases 1–2 complete (scaffold, data layer, tokens, shell, primitives;
-Contacts & Companies end to end). Phase 3 (Deals Pipeline) not started.
+**Status:** Phases 1–5 complete, plus Demo Mode pulled forward out of Phase 6.
+What remains of Phase 6 is the company profile, the accent picker, the pipeline
+stage editor and role management; Phase 7 is the polish pass.
 
 ---
 
@@ -22,6 +23,13 @@ Contacts & Companies end to end). Phase 3 (Deals Pipeline) not started.
 | Record detail | Its own route (`/contacts/:id`), with create/edit in a Drawer over it | A record is something you send someone a link to; editing keeps the record in view |
 | Cross-module hand-off | URL params — `/contacts?new=1&companyId=…` | Modules cannot import each other's forms (§3). The URL is a contract neither module owns, so neither has to change when the other does |
 | List query state | One `useListQuery` hook, shared by every list screen | Search/filter/sort/paginate behaving *identically* everywhere is worth more than any screen's local cleverness |
+| Board card order | Sorted by heat, hottest first; within-column drags are no-ops | `Deal` has no per-stage `order` field, so a reorder could not be persisted. Sorting by urgency is honest about that and puts the deal that needs you at the top of every column |
+| Board drag input | `MouseSensor` (6px) + `TouchSensor` (200ms press) + `KeyboardSensor` (Space) | One `PointerSensor` cannot serve all three: a distance rule on touch turns the first scroll swipe into a drag |
+| Notes & timeline | `components/`, generic over `{entityType, entityId}` | Contacts, companies and deals each need both and may not import each other. Neither component knows what a Deal is, so neither is feature code |
+| Time series | Read from `ActivityEvent.occurredAt`, never from `updatedAt` | "When did we win this?" and "when was this row last touched?" look alike until someone edits an old deal's title and it lands in this month's numbers |
+| Chart colour | Single-series charts are neutral ink; won/lost wear the status tokens | Magnitude is carried by bar length, so there is no identity to encode. Spending the accent — which everywhere else means *act on this* — on chart decoration is what makes it stop meaning anything |
+| Demo Mode owns its dataset | Enabling *or* disabling wipes first; both are behind a confirmation | Half-demo, half-real is the state where somebody loses work they thought was theirs |
+| Reports bundle | `React.lazy` on the Reports route | Recharts is the heaviest dependency and one screen uses it. Splitting it halves what every other screen downloads |
 
 ---
 
@@ -280,15 +288,32 @@ src/
       CompanyForm.tsx
       useCompanies.ts
       companyMeta.ts          # size labels, address + website formatting
-    deals/
-    tasks/
-    dashboard/
+    deals/                    # Phase 3
+      DealsPage.tsx           # toolbar + board + form
+      PipelineBoard.tsx       # DndContext, optimistic moves, SR announcements
+      StageColumn.tsx         # one droppable column
+      DealCard.tsx            # one sortable card
+      DealDetailPage.tsx      # route /deals/:id
+      DealForm.tsx
+      useDeals.ts
+      dealMeta.ts             # status wording, column totals, heat ordering
+    tasks/                    # Phase 4
+      TasksPage.tsx           # the one to-do list: open/done tabs, due-date sort
+      TaskForm.tsx
+      useTasks.ts
+      taskMeta.ts
+    dashboard/                # Phase 5
+      DashboardPage.tsx       # 4 stat tiles + needs-attention + latest activity
+      ReportsPage.tsx         # the 3 Recharts views (lazy-loaded)
+      ChartCard.tsx           # chart shell + the table view every chart has
+      useAnalytics.ts         # every number on both screens, computed once
     settings/
     users/
   components/                 # shared primitives: Button, Field, Select, Table,
                               # Drawer, Modal, Tag, Avatar, EmptyState, HeatStripe,
                               # Toast, ConfirmDialog, Skeleton, Pagination,
-                              # ListToolbar, TagInput, DescriptionList, OwnerSelect
+                              # ListToolbar, TagInput, DescriptionList, OwnerSelect,
+                              # RecordRow, ActivityTimeline, NotesPanel
   layout/                     # AppShell, Sidebar, Topbar, PageHeader
   lib/
     tokens.ts                 # design tokens as TS (mirrors tailwind.config)
@@ -337,8 +362,29 @@ Derived scale (in `tailwind.config.ts`, all emitted as CSS vars):
 as "the main button."
 
 Contrast: body text `ink.700` on `card` = 12.6:1. `mute` is meta-only, never
-below 16px. Coral on white is 3.6:1 → used as a **fill** with white text
-(4.5:1+) or as a 3px+ graphic element, never as small text on white.
+below 16px.
+
+**Known issue — coral and white text (found in the Phase 7 a11y pass).** Coral
+on white measures **3.28:1**, not the 3.6:1 originally written here, and the
+claim that using it as a fill with white text yields "4.5:1+" was never
+possible: contrast is *symmetric*, so white-on-coral is the same 3.28:1. That
+clears the 3:1 bar for graphic elements — the heat stripe, the focus ring, a
+3px rule — but **not** the 4.5:1 bar for the 14px white labels on primary
+buttons.
+
+Coral has to darken by ~18%, to about `#D14030`, before white 14px text clears
+4.5:1. That is a visible change to the most recognisable colour in the system,
+so it is recorded here as a decision for the fork rather than made silently:
+
+| Option | Effect |
+|---|---|
+| Darken `accent.500` to `#D14030` | Passes AA everywhere. Deeper, less vibrant coral. |
+| Keep coral; use it only for fills behind **graphite** text | `#17191C` on coral is 5.37:1. Changes what a primary button looks like. |
+| Keep coral; accept AA-large only on button labels | Requires 18.66px bold labels — too big for a dense CRM. |
+| Keep as-is, documented | What ships today. |
+
+Settings → accent colour measures this live and warns below 4.5:1, so a forking
+client picking their own brand colour cannot repeat the mistake unknowingly.
 
 ### Type
 - **Display — Space Grotesk** (600/700): page titles, KPI values, stage headers,
@@ -410,11 +456,45 @@ heat ramp — follows. No rebuild, no token edits.
    Contacts carry the heat stripe (neglect, from `lastActivityByContact`);
    companies deliberately do not — a company has no due date of its own, and a
    stripe with nothing behind it is decoration pretending to be signal.
-3. **Deals Pipeline** — dnd-kit board, stage config wiring, deal detail.
-4. **Tasks + Notes/Timeline** — task list, the merged ActivityEvent feed.
-5. **Dashboard & Reports** — 4 KPI cards, 3 Recharts views.
-6. **Roles + Settings + Demo Mode** — rbac gates, settings screens, `src/demo/`.
-7. **Polish** — empty/error/loading states, responsive sweep, a11y pass.
+3. ~~**Deals Pipeline**~~ — ✅ done. The board's columns *are*
+   `AppSettings.stages` — names, order and which stages close a deal — so a
+   fork repoints the pipeline in Settings without touching the module. A drop
+   calls `deals.moveToStage()` and nothing else: the repository stamps
+   `stageEnteredAt`, derives won/lost from the target stage's outcome and
+   writes the activity event, so dragging a card and changing the stage on the
+   detail page produce identical history. Moves are optimistic, with the
+   in-flight move held as component state and dropped once the repository
+   agrees — never a second cache of server data. Keyboard drag (Space to pick
+   up, arrows, Space to drop) and stage-named screen-reader announcements are
+   wired; Enter stays free to open the deal.
+   Contact and company detail pages now list their related deals, read through
+   `provider.deals`, not through this module.
+4. ~~**Tasks + Notes/Timeline**~~ — ✅ done. The task list is the only screen
+   in the app that is a to-do list rather than a record browser, so it opens on
+   what is still open, sorted by due date. Ticking a task calls
+   `setCompleted()` rather than patching the field, so completing one always
+   writes the history the timeline reads. `ActivityTimeline` and `NotesPanel`
+   are generic over `{entityType, entityId}` and sit on all three detail pages;
+   the merge itself stays in the repository, where the denormalized `related*`
+   links answer "what happened here?" in one lookup.
+5. ~~**Dashboard & Reports**~~ — ✅ done. Four stat tiles (open pipeline, won
+   this quarter, win rate, tasks needing you) and three charts: open pipeline
+   by stage, deals won and lost by week, activity volume by week. Every number
+   on both screens comes from `useAnalytics.ts`, so the two can never disagree
+   about what "won this quarter" means. Every chart carries a table view.
+6. **Roles + Settings** — rbac gates, company profile, accent picker, the
+   pipeline stage editor. ~~Demo Mode~~ was pulled forward: the dashboard and
+   reports are impossible to review, and impossible to demo, against an empty
+   database. `src/demo/` and both of its touchpoints are in place; see
+   `src/demo/README.md` for what deleting it costs.
+7. ~~**Polish**~~ — ✅ done. An `ErrorBoundary` per route, so one bad render
+   no longer blanks the whole app; a skip link; `document.title` per route; a
+   polite live-region announcement and focus moved to `<main>` on navigation,
+   which is what a browser does for free on a normal page load and a SPA has to
+   put back by hand. The scaffolding is gone (`PhasePlaceholder`, and the
+   `footerSlot` prop the demo badge no longer needs). The a11y pass found one
+   real defect that is *not* fixed in code — the coral/white contrast recorded
+   in §4 — because the fix changes the brand colour and that is the fork's call.
 
 ---
 

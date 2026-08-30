@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useMutation, useResource } from '@/data/useResource';
 import { useSession } from '@/data/useSession';
 import type { ContactCreate, ContactUpdate } from '@/data/repositories';
-import type { Company, Contact, ID, ListQuery, User } from '@/data/types';
+import type { Company, Contact, Deal, ID, ListQuery, Task, User } from '@/data/types';
 
 /* Every read and write this module performs, in one file.
  *
@@ -69,6 +69,10 @@ export interface ContactDetail {
   contact: Contact | null;
   company: Company | null;
   owner: User | null;
+  /** This person's deals and open tasks, read through the data layer — never
+      through the Deals or Tasks modules, which this one may not import (§3). */
+  deals: Deal[];
+  tasks: Task[];
   lastActivityAt?: string;
 }
 
@@ -77,19 +81,37 @@ export function useContactDetail(id: ID | undefined) {
   const { users } = useSession();
 
   const state = useResource(
-    async (provider): Promise<{ contact: Contact | null; company: Company | null; lastActivityAt?: string }> => {
-      if (!id) return { contact: null, company: null };
+    async (
+      provider,
+    ): Promise<{
+      contact: Contact | null;
+      company: Company | null;
+      deals: Deal[];
+      tasks: Task[];
+      lastActivityAt?: string;
+    }> => {
+      const none = { contact: null, company: null, deals: [], tasks: [] };
+      if (!id) return none;
       const contact = await provider.contacts.get(id);
-      if (!contact) return { contact: null, company: null };
+      if (!contact) return none;
 
-      const [company, lastActivity] = await Promise.all([
+      const [company, deals, tasks, lastActivity] = await Promise.all([
         contact.companyId ? provider.companies.get(contact.companyId) : Promise.resolve(null),
+        provider.deals.listByContact(contact.id),
+        provider.tasks.listByContact(contact.id),
         provider.activity.lastActivityByContact(),
       ]);
-      return { contact, company, lastActivityAt: lastActivity[contact.id] };
+      return {
+        contact,
+        company,
+        deals,
+        // The panel is "what is still outstanding", not an archive.
+        tasks: tasks.filter((task) => !task.completed),
+        lastActivityAt: lastActivity[contact.id],
+      };
     },
     [id],
-    { watch: ['contacts', 'companies', 'activity'], enabled: Boolean(id) },
+    { watch: ['contacts', 'companies', 'deals', 'tasks', 'activity'], enabled: Boolean(id) },
   );
 
   const contact = state.data?.contact ?? null;
@@ -97,6 +119,8 @@ export function useContactDetail(id: ID | undefined) {
     contact,
     company: state.data?.company ?? null,
     owner: users.find((u) => u.id === contact?.ownerId) ?? null,
+    deals: state.data?.deals ?? [],
+    tasks: state.data?.tasks ?? [],
     lastActivityAt: state.data?.lastActivityAt,
   };
 

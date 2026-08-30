@@ -1,8 +1,11 @@
-import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/cn';
 import { can } from '@/lib/rbac';
 import type { User } from '@/data/types';
+/* DEMO TOUCHPOINT 1 of 2. Deleting src/demo/ breaks this import and the footer
+   block below; nothing else in the frame knows Demo Mode exists. */
+import { DemoBadge } from '@/demo/DemoBadge';
+import { useDemoMode } from '@/demo/useDemoMode';
 import { primaryNav, secondaryNav, type NavItem } from './navigation';
 
 /* Graphite rail. Full width on lg, icon-only on md, replaced by a bottom bar
@@ -15,12 +18,11 @@ export interface SidebarProps {
   user: User | null;
   companyName: string;
   collapsed: boolean;
-  /** Demo Mode's badge slot. One of exactly two demo touchpoints in core code. */
-  footerSlot?: ReactNode;
   onNavigate?: () => void;
 }
 
-export function Sidebar({ user, companyName, collapsed, footerSlot, onNavigate }: SidebarProps) {
+export function Sidebar({ user, companyName, collapsed, onNavigate }: SidebarProps) {
+  const { enabled: demoMode } = useDemoMode();
   const visible = (items: NavItem[]) => items.filter((item) => !item.requires || can(user, item.requires));
 
   return (
@@ -52,8 +54,10 @@ export function Sidebar({ user, companyName, collapsed, footerSlot, onNavigate }
         )}
       </div>
 
-      {footerSlot && (
-        <div className={cn('border-t border-white/10 p-3', collapsed && 'px-2')}>{footerSlot}</div>
+      {demoMode && (
+        <div className={cn('border-t border-white/10 p-3', collapsed && 'px-2')}>
+          <DemoBadge collapsed={collapsed} />
+        </div>
       )}
     </nav>
   );

@@ -52,14 +52,26 @@ for wording and defaults that nothing outside the module has an opinion about.
 |---|---|---|
 | 1 | Scaffold — data layer, tokens, shell, primitives | ✅ |
 | 2 | Contacts & Companies — list, detail, forms | ✅ |
-| 3 | Deals Pipeline — dnd-kit board, stage config | — |
-| 4 | Tasks + Notes/Timeline | — |
-| 5 | Dashboard & Reports | — |
-| 6 | Roles + Settings + Demo Mode | — |
-| 7 | Polish — states, responsive, a11y | — |
+| 3 | Deals Pipeline — dnd-kit board, stage config, deal detail | ✅ |
+| 4 | Tasks + Notes/Timeline | ✅ |
+| 5 | Dashboard & Reports — 4 stat tiles, 3 charts | ✅ |
+| 6 | Roles + Settings + Demo Mode | ✅ |
+| 7 | Polish — states, responsive, a11y | ✅ |
 
-There is no seed data before Phase 6, so a fresh clone opens on empty states.
-Create a company, then a contact, to see the list screens with something in them.
+One open item from the a11y pass: white text on coral is 3.28:1, under the
+4.5:1 that 14px button labels need. Fixing it means darkening the brand colour,
+so it is written up in [`CONTEXT.md`](./CONTEXT.md) §4 as a decision for the
+fork rather than changed silently.
+
+A fresh clone opens on empty states. The fastest way to see the app with
+something in it is **Settings → Demo Mode → Load demo data**, which generates a
+book of business with a live pipeline, overdue tasks and a quarter of history
+behind it. `src/demo/` is deleted before client handoff — see
+[`src/demo/README.md`](./src/demo/README.md).
+
+On the pipeline board, a card is dragged with the mouse (after ~6px), with a
+200ms press on touch, or from the keyboard: focus a card, Space to pick it up,
+arrows to move, Space to drop, Escape to cancel. Enter opens the deal.
 
 ## Forking checklist
 

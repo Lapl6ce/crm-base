@@ -1,18 +1,23 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ActivityTimeline } from '@/components/ActivityTimeline';
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
 import { Card, CardBody, CardHeader } from '@/components/Card';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { DescriptionItem, DescriptionList } from '@/components/DescriptionList';
 import { EmptyState, ErrorState } from '@/components/EmptyState';
-import { IconChevronLeft, IconChevronRight, IconPlus, IconTrash } from '@/components/icons';
+import { HeatLabel } from '@/components/HeatStripe';
+import { IconChevronLeft, IconPlus, IconTrash } from '@/components/icons';
+import { NotesPanel } from '@/components/NotesPanel';
+import { RecordRow } from '@/components/RecordRow';
 import { Skeleton } from '@/components/Skeleton';
 import { Tag } from '@/components/Tag';
 import { toast } from '@/components/Toast';
 import { useSession } from '@/data/useSession';
 import { PageHeader } from '@/layout/PageHeader';
-import { formatDate, formatDateTime, fullName, pluralize } from '@/lib/format';
+import { formatCurrency, formatDate, formatDateTime, fullName, pluralize } from '@/lib/format';
+import { dealHeat } from '@/lib/heat';
 import { can } from '@/lib/rbac';
 import { COMPANY_SIZE_LABEL, formatAddress, websiteUrl } from './companyMeta';
 import { CompanyForm } from './CompanyForm';
@@ -29,14 +34,14 @@ import { useCompanyDetail, useCompanyMutations } from './useCompanies';
 export function CompanyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useSession();
+  const { user, stages } = useSession();
   const { detail, loading, error, refresh } = useCompanyDetail(id);
   const { remove } = useCompanyMutations();
 
   const [editOpen, setEditOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const { company, contacts, owner } = detail;
+  const { company, contacts, deals, owner } = detail;
 
   if (loading) return <DetailSkeleton />;
   if (error) return <ErrorState description={error.message} onRetry={refresh} />;
@@ -56,6 +61,7 @@ export function CompanyDetailPage() {
   const canEditCompanies = can(user, 'companies.edit');
   const canDelete = can(user, 'companies.delete');
   const canEditContacts = can(user, 'contacts.edit');
+  const canEditDeals = can(user, 'deals.edit');
   const site = websiteUrl(company);
   const address = formatAddress(company.address);
 
@@ -204,23 +210,12 @@ export function CompanyDetailPage() {
               <ul className="divide-y divide-ink-100">
                 {contacts.map((contact) => (
                   <li key={contact.id}>
-                    <Link
+                    <RecordRow
                       to={`/contacts/${contact.id}`}
-                      className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-app"
-                    >
-                      <Avatar name={fullName(contact) || 'Unnamed'} size="sm" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-base font-medium text-ink-900">
-                          {fullName(contact) || 'Unnamed'}
-                        </span>
-                        {contact.jobTitle && (
-                          <span className="block truncate text-xs text-ink-300">
-                            {contact.jobTitle}
-                          </span>
-                        )}
-                      </span>
-                      <IconChevronRight size={16} className="shrink-0 text-ink-150" />
-                    </Link>
+                      leading={<Avatar name={fullName(contact) || 'Unnamed'} size="sm" />}
+                      title={fullName(contact) || 'Unnamed'}
+                      subtitle={contact.jobTitle}
+                    />
                   </li>
                 ))}
               </ul>
@@ -241,19 +236,73 @@ export function CompanyDetailPage() {
             </CardBody>
           </Card>
 
-          {/* Deals and the activity feed for this account arrive with their
-              own phases; the slot is reserved so nothing shifts later. */}
           <Card>
-            <CardHeader title="Deals & timeline" />
-            <CardBody>
-              <EmptyState
-                size="sm"
-                title="Arriving in Phases 3 and 4"
-                description="Open deals with this account and its activity feed appear here."
-              />
-            </CardBody>
+            <CardHeader
+              title={`Deals (${deals.length})`}
+              action={
+                canEditDeals && (
+                  <Button
+                    size="sm"
+                    icon={<IconPlus size={14} />}
+                    onClick={() => navigate(`/deals?new=1&companyId=${company.id}`)}
+                  >
+                    Add
+                  </Button>
+                )
+              }
+            />
+            {deals.length === 0 ? (
+              <CardBody>
+                <EmptyState
+                  size="sm"
+                  title="No deals with this account"
+                  description="Deals you open with this company will be listed here."
+                  action={
+                    canEditDeals && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => navigate(`/deals?new=1&companyId=${company.id}`)}
+                      >
+                        New deal
+                      </Button>
+                    )
+                  }
+                />
+              </CardBody>
+            ) : (
+              <ul className="divide-y divide-ink-100">
+                {deals.map((deal) => (
+                  <li key={deal.id}>
+                    <RecordRow
+                      to={`/deals/${deal.id}`}
+                      heat={dealHeat(deal)}
+                      title={deal.title}
+                      subtitle={stages.find((s) => s.id === deal.stageId)?.name}
+                      trailing={formatCurrency(deal.value, deal.currency)}
+                      trailingHint={<HeatLabel heat={dealHeat(deal)} />}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
           </Card>
+
+
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="overflow-hidden">
+          <CardHeader title="Notes" />
+          <NotesPanel entityType="company" entityId={company.id} canWrite={canEditCompanies} />
+        </Card>
+        <Card className="overflow-hidden">
+          <CardHeader title="Timeline" />
+          {/* Everything at this account: its own events plus its people's and
+              its deals', merged by the repository. */}
+          <ActivityTimeline entityType="company" entityId={company.id} className="py-2" />
+        </Card>
       </div>
 
       <CompanyForm open={editOpen} onClose={() => setEditOpen(false)} company={company} />
