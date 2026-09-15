@@ -246,3 +246,285 @@ export class ValidationError extends Error {
     this.fields = fields;
   }
 }
+
+/* --- Commerce Entities --------------------------------------------------- */
+
+export interface Product {
+  id: ID;
+  sku: string;
+  name: string;
+  category: string;
+  unitPrice: number;
+  costPrice: number;
+  unitCost: number;
+  stock: number;
+  stockOnHand: number;
+  minStockLevel: number;
+  reorderPoint: number;
+  status: 'active' | 'low_stock' | 'out_of_stock' | 'archived';
+  description?: string;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+}
+
+export interface Sale {
+  id: ID;
+  invoiceNumber: string;
+  customerId: ID;
+  customerName: string;
+  total: number;
+  totalAmount: number;
+  currency: string;
+  status: 'completed' | 'pending' | 'refunded' | 'draft' | 'issued' | 'paid' | 'overdue' | 'cancelled';
+  paymentMethod: string;
+  paymentTerms: string;
+  itemsCount: number;
+  notes?: string;
+  date: ISODateString;
+  createdAt: ISODateString;
+}
+
+export interface Quotation {
+  id: ID;
+  quoteNumber: string;
+  customerId?: ID;
+  customerName: string;
+  total: number;
+  totalAmount: number;
+  currency: string;
+  status: 'draft' | 'sent' | 'accepted' | 'declined' | 'expired';
+  validUntil: ISODateString;
+  itemsCount?: number;
+  notes?: string;
+  createdAt: ISODateString;
+}
+
+export interface Purchase {
+  id: ID;
+  poNumber: string;
+  supplierId: ID;
+  supplierName: string;
+  total: number;
+  totalAmount: number;
+  currency: string;
+  status: 'draft' | 'ordered' | 'received' | 'partially_received' | 'cancelled';
+  paymentStatus: 'unpaid' | 'partially_paid' | 'paid';
+  orderDate: ISODateString;
+  expectedDate?: ISODateString;
+  expectedDeliveryDate?: ISODateString;
+  itemsCount?: number;
+  createdAt: ISODateString;
+}
+
+export interface Order {
+  id: ID;
+  orderNumber: string;
+  type: 'sales' | 'purchase';
+  partyName: string;
+  total: number;
+  totalAmount: number;
+  currency: string;
+  fulfillmentStatus: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  itemsCount: number;
+  date: ISODateString;
+  orderDate?: ISODateString;
+  trackingNumber?: string;
+  createdAt: ISODateString;
+}
+
+/* --- Operations Entities ------------------------------------------------- */
+
+export interface Warehouse {
+  id: ID;
+  name: string;
+  code: string;
+  location: string;
+  manager: string;
+  capacityUnits: number;
+  utilizationPercent?: number;
+  utilizedUnits: number;
+  totalSkus?: number;
+  status: 'operational' | 'maintenance' | 'full' | 'active' | 'inactive';
+  createdAt?: ISODateString;
+}
+
+export interface Shipment {
+  id: ID;
+  trackingNumber: string;
+  orderNumber?: string;
+  carrier: string;
+  origin: string;
+  destination: string;
+  status: 'in_transit' | 'delivered' | 'delayed' | 'out_for_delivery' | 'exception' | 'pending' | 'customs_hold' | 'returned';
+  dispatchDate?: ISODateString;
+  estimatedArrival?: ISODateString;
+  estimatedDelivery?: ISODateString;
+  actualDelivery?: ISODateString;
+  recipientName?: string;
+  createdAt: ISODateString;
+}
+
+export interface SupplierRecord {
+  id: ID;
+  name: string;
+  code: string;
+  category: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  paymentTerms: string;
+  rating: number;
+  activeContracts: number;
+  city: string;
+  country: string;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+}
+
+export interface SupplierPerformance {
+  id: ID;
+  supplierId: ID;
+  supplierName: string;
+  onTimeDeliveryRate: number; // 0..100
+  qualityAcceptanceRate?: number; // 0..100
+  qualityScore: number;
+  averageLeadDays?: number;
+  leadTimeDays: number;
+  fillRate?: number; // 0..100
+  riskLevel?: 'low' | 'medium' | 'high';
+  period: string;
+  defectRate: number;
+  spend: number;
+  rating: 'A' | 'B' | 'C' | 'D' | 'F';
+  lastEvaluationDate?: ISODateString;
+}
+
+export interface CrmDocument {
+  id: ID;
+  title: string;
+  name?: string;
+  fileName: string;
+  category: 'contract' | 'invoice' | 'proposal' | 'compliance' | 'spec';
+  fileSize: string;
+  fileType: string;
+  uploadedBy: string;
+  uploadedAt: ISODateString;
+  relatedEntityName?: string;
+  relatedType?: 'customer' | 'supplier' | 'deal' | 'general';
+  relatedName?: string;
+  url?: string;
+  tags: string[];
+}
+
+/* --- Finance Entities ---------------------------------------------------- */
+
+export interface Payment {
+  id: ID;
+  reference: string;
+  referenceNumber: string;
+  type: 'inbound' | 'outbound';
+  amount: number;
+  currency: string;
+  method?: 'bank_transfer' | 'credit_card' | 'wire' | 'check' | string;
+  paymentMethod?: 'bank_transfer' | 'credit_card' | 'wire' | 'check' | 'ach' | string;
+  status: 'completed' | 'pending' | 'failed';
+  partyName: string;
+  date: ISODateString;
+  createdAt: ISODateString;
+}
+
+export interface Expense {
+  id: ID;
+  title: string;
+  category: 'software' | 'travel' | 'marketing' | 'office' | 'payroll' | 'legal' | string;
+  amount: number;
+  currency: string;
+  approvedBy: string;
+  date: ISODateString;
+  receiptAttached: boolean;
+  status: 'pending' | 'approved' | 'rejected' | 'paid';
+  createdAt: ISODateString;
+}
+
+export interface Receivable {
+  id: ID;
+  invoiceNumber: string;
+  debtorName: string;
+  customerName: string;
+  amount: number;
+  currency: string;
+  issueDate: ISODateString;
+  dueDate: ISODateString;
+  agingBucket: '0-30' | '31-60' | '61-90' | '90+' | 'current' | string;
+  status: 'current' | 'overdue' | 'collected' | 'pending' | 'paid';
+}
+
+export interface Payable {
+  id: ID;
+  billNumber: string;
+  creditorName: string;
+  supplierName: string;
+  amount: number;
+  currency: string;
+  dueDate: ISODateString;
+  paymentTerms?: string;
+  paymentMethod?: string;
+  status: 'unpaid' | 'scheduled' | 'overdue' | 'paid' | 'pending';
+}
+
+/* --- Administration Entities --------------------------------------------- */
+
+export interface RoleDefinition {
+  id: ID;
+  name: string;
+  code: string;
+  description: string;
+  userCount: number;
+  permissions: string[];
+  isSystem: boolean;
+  createdAt?: ISODateString;
+}
+
+export interface AutomationRule {
+  id: ID;
+  name: string;
+  description: string;
+  trigger: string;
+  condition: string;
+  action: string;
+  active: boolean;
+  executionCount: number;
+  lastTriggeredAt?: ISODateString;
+  createdAt?: ISODateString;
+}
+
+/* --- Intelligence & AI --------------------------------------------------- */
+
+export interface AIBusinessInsight {
+  id: ID;
+  title: string;
+  summary: string;
+  category: 'revenue' | 'risk' | 'operations' | 'efficiency';
+  impact: 'high' | 'medium' | 'low';
+  metricHighlight?: string;
+  recommendation: string;
+  createdAt: ISODateString;
+}
+
+export interface CommunicationLog {
+  id: ID;
+  type: 'email' | 'call' | 'meeting' | 'note' | 'sms';
+  subject: string;
+  summary: string;
+  contactName: string;
+  contactEmail?: string;
+  companyName?: string;
+  direction: 'inbound' | 'outbound' | 'internal';
+  status: 'completed' | 'scheduled' | 'missed' | 'draft';
+  date: ISODateString;
+  durationMinutes?: number;
+  userName: string;
+  tags?: string[];
+  createdAt?: ISODateString;
+}
+

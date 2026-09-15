@@ -1,10 +1,10 @@
-import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
+import type { ReactNode } from 'react';
 
 /* One page title treatment, used by every module so pages cannot drift apart. */
 
 export interface PageHeaderProps {
-  title: string;
+  title: ReactNode;
   /** Count or one-line context, e.g. "128 contacts". */
   meta?: ReactNode;
   description?: string;

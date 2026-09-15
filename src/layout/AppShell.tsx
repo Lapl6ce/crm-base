@@ -10,7 +10,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { RouteAnnouncer } from './RouteAnnouncer';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
-import { primaryNav, secondaryNav, type NavItem } from './navigation';
+import { allNavItems, type NavSubItem } from './navigation';
 
 /* The frame every route renders inside.
  *
@@ -37,7 +37,7 @@ export function AppShell() {
   // small thing that feels broken.
   useEffect(() => setMobileNavOpen(false), [location.pathname]);
 
-  const mobileItems = [...primaryNav, ...secondaryNav]
+  const mobileItems = allNavItems
     .filter((item) => item.mobile && (!item.requires || can(user, item.requires)))
     .slice(0, 5);
 
@@ -113,7 +113,7 @@ export function AppShell() {
   );
 }
 
-function MobileNav({ items }: { items: NavItem[] }) {
+function MobileNav({ items }: { items: NavSubItem[] }) {
   if (items.length === 0) return null;
   return (
     <nav

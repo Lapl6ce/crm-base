@@ -55,9 +55,9 @@ module.exports = {
     'no-restricted-imports': restrict(MOCK, DEMO),
   },
   overrides: [
-    // Modules additionally may not see each other.
+    // Modules & Features additionally may not see each other.
     {
-      files: ['src/modules/**/*.{ts,tsx}'],
+      files: ['src/modules/**/*.{ts,tsx}', 'src/features/**/*.{ts,tsx}'],
       rules: { 'no-restricted-imports': restrict(MOCK, DEMO, CROSS_MODULE) },
     },
     // The data layer is what owns the mock adapter; main.tsx picks one at boot.
@@ -76,7 +76,7 @@ module.exports = {
       rules: { 'no-restricted-imports': restrict(MOCK) },
     },
     {
-      files: ['src/modules/settings/**/*.{ts,tsx}'],
+      files: ['src/modules/settings/**/*.{ts,tsx}', 'src/features/administration/settings/**/*.{ts,tsx}'],
       rules: { 'no-restricted-imports': restrict(MOCK, CROSS_MODULE) },
     },
   ],

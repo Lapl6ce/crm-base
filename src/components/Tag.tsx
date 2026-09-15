@@ -1,15 +1,16 @@
-import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
+import type { ReactNode } from 'react';
 
 /* Tags and status pills. `tone` is semantic, not decorative: neutral for
    metadata, positive for won/done, accent for anything needing action. */
 
-export type TagTone = 'neutral' | 'accent' | 'positive' | 'warn' | 'danger';
+export type TagTone = 'neutral' | 'accent' | 'positive' | 'success' | 'warn' | 'danger';
 
 const TONES: Record<TagTone, string> = {
   neutral: 'bg-surface-sunken text-ink-500',
   accent: 'bg-accent-100 text-accent-600',
   positive: 'bg-positive-100 text-positive-600',
+  success: 'bg-positive-100 text-positive-600',
   warn: 'bg-warn-100 text-warn-500',
   danger: 'bg-danger-100 text-danger-600',
 };

@@ -1,18 +1,14 @@
-import { NavLink } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/cn';
 import { can } from '@/lib/rbac';
 import type { User } from '@/data/types';
+import { IconChevronDown } from '@/components/icons';
 /* DEMO TOUCHPOINT 1 of 2. Deleting src/demo/ breaks this import and the footer
    block below; nothing else in the frame knows Demo Mode exists. */
 import { DemoBadge } from '@/demo/DemoBadge';
 import { useDemoMode } from '@/demo/useDemoMode';
-import { primaryNav, secondaryNav, type NavItem } from './navigation';
-
-/* Graphite rail. Full width on lg, icon-only on md, replaced by a bottom bar
-   below that (see AppShell).
- *
- * The .on-dark class flips the focus ring to white — a coral ring on graphite
- * is legible but muddy, and focus visibility is not the place to compromise. */
+import { navigationSections, type NavSection } from './navigation';
 
 export interface SidebarProps {
   user: User | null;
@@ -23,7 +19,37 @@ export interface SidebarProps {
 
 export function Sidebar({ user, companyName, collapsed, onNavigate }: SidebarProps) {
   const { enabled: demoMode } = useDemoMode();
-  const visible = (items: NavItem[]) => items.filter((item) => !item.requires || can(user, item.requires));
+  const location = useLocation();
+
+  // Determine which section the active route belongs to
+  const activeSectionId = navigationSections.find((sec) =>
+    sec.items.some((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)),
+  )?.id ?? 'dashboard';
+
+  // Sections open/closed state; auto-expand active section
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    [activeSectionId]: true,
+    dashboard: true,
+  });
+
+  // When route changes, make sure the active section is expanded
+  useEffect(() => {
+    if (activeSectionId) {
+      setOpenSections((prev) => ({ ...prev, [activeSectionId]: true }));
+    }
+  }, [activeSectionId]);
+
+  const toggleSection = (sectionId: string) => {
+    setOpenSections((prev) => ({ ...prev, [sectionId]: !prev[sectionId] }));
+  };
+
+  const visibleSections = navigationSections
+    .filter((sec) => !sec.requires || can(user, sec.requires))
+    .map((sec) => ({
+      ...sec,
+      items: sec.items.filter((item) => !item.requires || can(user, item.requires)),
+    }))
+    .filter((sec) => sec.items.length > 0);
 
   return (
     <nav
@@ -33,7 +59,7 @@ export function Sidebar({ user, companyName, collapsed, onNavigate }: SidebarPro
         collapsed ? 'w-rail items-center' : 'w-sidebar',
       )}
     >
-      <div className={cn('flex h-14 items-center gap-2.5 px-4', collapsed && 'justify-center px-0')}>
+      <div className={cn('flex h-14 shrink-0 items-center gap-2.5 px-4', collapsed && 'justify-center px-0')}>
         <Wordmark />
         {!collapsed && (
           <span className="truncate font-display text-base font-semibold text-white">
@@ -42,20 +68,22 @@ export function Sidebar({ user, companyName, collapsed, onNavigate }: SidebarPro
         )}
       </div>
 
-      <div className={cn('flex flex-1 flex-col gap-6 overflow-y-auto py-4', collapsed ? 'px-2' : 'px-3')}>
-        <NavGroup items={visible(primaryNav)} collapsed={collapsed} onNavigate={onNavigate} />
-        {visible(secondaryNav).length > 0 && (
-          <NavGroup
-            label="Manage"
-            items={visible(secondaryNav)}
+      <div className={cn('scroll-slim flex flex-1 flex-col gap-3 overflow-y-auto py-3', collapsed ? 'px-2' : 'px-3')}>
+        {visibleSections.map((section) => (
+          <SidebarSection
+            key={section.id}
+            section={section}
+            isOpen={openSections[section.id] ?? false}
+            onToggle={() => toggleSection(section.id)}
             collapsed={collapsed}
             onNavigate={onNavigate}
+            currentPath={location.pathname}
           />
-        )}
+        ))}
       </div>
 
       {demoMode && (
-        <div className={cn('border-t border-white/10 p-3', collapsed && 'px-2')}>
+        <div className={cn('shrink-0 border-t border-white/10 p-3', collapsed && 'px-2')}>
           <DemoBadge collapsed={collapsed} />
         </div>
       )}
@@ -63,57 +91,117 @@ export function Sidebar({ user, companyName, collapsed, onNavigate }: SidebarPro
   );
 }
 
-function NavGroup({
-  label,
-  items,
+function SidebarSection({
+  section,
+  isOpen,
+  onToggle,
   collapsed,
   onNavigate,
+  currentPath,
 }: {
-  label?: string;
-  items: NavItem[];
+  section: NavSection;
+  isOpen: boolean;
+  onToggle: () => void;
   collapsed: boolean;
   onNavigate?: () => void;
+  currentPath: string;
 }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      {label && !collapsed && (
-        <p className="mb-1 px-2.5 text-2xs font-semibold uppercase tracking-wide text-ink-500">
-          {label}
-        </p>
-      )}
-      {items.map((item) => (
+  const isAnyChildActive = section.items.some(
+    (item) => currentPath === item.to || currentPath.startsWith(`${item.to}/`),
+  );
+
+  if (collapsed) {
+    // In collapsed icon-rail mode: click icon to navigate to first submodule
+    const firstItem = section.items[0];
+    return (
+      <div className="relative flex justify-center py-1">
         <NavLink
-          key={item.to}
-          to={item.to}
-          end={item.to === '/'}
+          to={firstItem.to}
           onClick={onNavigate}
-          title={collapsed ? item.label : undefined}
-          className={({ isActive }) =>
-            cn(
-              'group relative flex items-center gap-2.5 rounded px-2.5 py-2 text-base font-medium',
-              'motion-safe:transition-colors motion-safe:duration-150',
-              collapsed && 'justify-center px-0',
-              isActive ? 'bg-white/10 text-white' : 'text-ink-150 hover:bg-white/5 hover:text-white',
-            )
-          }
-        >
-          {({ isActive }) => (
-            <>
-              {/* The active marker is the heat stripe again, at rest. */}
-              <span
-                aria-hidden="true"
-                className={cn(
-                  'absolute left-0 h-5 w-[3px] rounded-r-full bg-accent-500',
-                  isActive ? 'opacity-100' : 'opacity-0',
-                )}
-              />
-              <item.icon size={18} className="shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-              {collapsed && <span className="sr-only">{item.label}</span>}
-            </>
+          title={section.label}
+          className={cn(
+            'group flex h-9 w-9 items-center justify-center rounded text-ink-300 motion-safe:transition-colors',
+            isAnyChildActive
+              ? 'bg-white/15 text-white'
+              : 'hover:bg-white/10 hover:text-white',
           )}
+        >
+          {isAnyChildActive && (
+            <span
+              aria-hidden="true"
+              className="absolute left-0 h-5 w-[3px] rounded-r-full bg-accent-500"
+            />
+          )}
+          <section.icon size={18} />
+          <span className="sr-only">{section.label}</span>
         </NavLink>
-      ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={cn(
+          'group flex w-full items-center justify-between rounded px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wider',
+          'motion-safe:transition-colors',
+          isAnyChildActive ? 'text-white' : 'text-ink-500 hover:text-ink-150',
+        )}
+      >
+        <div className="flex items-center gap-2">
+          <section.icon size={15} className={cn(isAnyChildActive ? 'text-accent-500' : 'text-ink-500 group-hover:text-ink-300')} />
+          <span>{section.label}</span>
+        </div>
+        <IconChevronDown
+          size={14}
+          className={cn(
+            'text-ink-500 motion-safe:transition-transform motion-safe:duration-150 group-hover:text-ink-300',
+            isOpen ? 'rotate-0' : '-rotate-90',
+          )}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="mt-0.5 flex flex-col gap-0.5 pl-2">
+          {section.items.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                cn(
+                  'group relative flex items-center gap-2.5 rounded px-2.5 py-1.5 text-sm font-medium',
+                  'motion-safe:transition-colors motion-safe:duration-150',
+                  isActive
+                    ? 'bg-white/10 text-white'
+                    : 'text-ink-300 hover:bg-white/5 hover:text-white',
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'absolute left-0 h-4 w-[3px] rounded-r-full bg-accent-500',
+                      isActive ? 'opacity-100' : 'opacity-0',
+                    )}
+                  />
+                  <item.icon size={16} className={cn('shrink-0', isActive ? 'text-accent-500' : 'text-ink-500 group-hover:text-ink-300')} />
+                  <span className="truncate">{item.label}</span>
+                  {item.badge && (
+                    <span className="ml-auto rounded-full bg-accent-500/20 px-1.5 py-0.5 text-2xs font-semibold text-accent-500">
+                      {item.badge}
+                    </span>
+                  )}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

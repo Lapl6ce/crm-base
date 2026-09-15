@@ -12,6 +12,7 @@ export interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
+  tone?: string;
   pending?: boolean;
   onConfirm: () => void;
   onCancel: () => void;

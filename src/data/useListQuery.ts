@@ -19,6 +19,8 @@ export interface ListQueryOptions {
   pageSize?: number;
   /** Keystroke settling time before a search hits the repository. */
   debounceMs?: number;
+  initialFilters?: Record<string, string>;
+  filters?: Record<string, string>;
 }
 
 export interface ListQueryState {
@@ -46,7 +48,9 @@ export function useListQuery(options: ListQueryOptions = {}): ListQueryState {
 
   const [search, setSearchRaw] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [filters, setFilters] = useState<Record<string, string>>(
+    options.initialFilters ?? options.filters ?? {},
+  );
   const [sort, setSortRaw] = useState(defaultSort);
   const [page, setPage] = useState(1);
 

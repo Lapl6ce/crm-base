@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
+import type { SortDirection } from '@/data/types';
 import { cn } from '@/lib/cn';
 import type { Heat } from '@/lib/heat';
-import type { SortDirection } from '@/data/types';
+import type { CSSProperties, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { HeatStripe } from './HeatStripe';
 import { IconChevronDown } from './icons';
 import { SkeletonRows } from './Skeleton';
@@ -18,11 +19,14 @@ import { SkeletonRows } from './Skeleton';
  */
 
 export interface Column<T> {
-  key: string;
+  key?: string;
+  id?: string;
   header: ReactNode;
-  render: (item: T) => ReactNode;
+  render?: (item: T) => ReactNode;
+  cell?: (item: T) => ReactNode;
   /** Field name to sort by; omit to make the column unsortable. */
   sortField?: string;
+  sortable?: boolean;
   align?: 'left' | 'right';
   width?: string;
   mobile?: 'primary' | 'secondary' | 'pair' | 'desktop';
@@ -30,42 +34,91 @@ export interface Column<T> {
 }
 
 export interface TableProps<T> {
-  items: T[];
-  columns: Column<T>[];
-  rowKey: (item: T) => string;
+  items?: T[];
+  data?: T[];
+  columns?: Column<T>[];
+  rowKey?: (item: T) => string;
+  keyField?: string;
   sort?: { field: string; dir: SortDirection };
   onSortChange?: (sort: { field: string; dir: SortDirection }) => void;
+  onSort?: (sort: { field: string; dir: SortDirection }) => void;
   onRowClick?: (item: T) => void;
   /** Adds the signature heat edge to each row. */
   heat?: (item: T) => Heat;
+  getRowHeat?: (item: T) => Heat;
+  getRowLink?: (item: T) => string;
   loading?: boolean;
   /** Shown when there are no items and nothing is loading. */
   empty?: ReactNode;
   className?: string;
+  children?: ReactNode;
 }
 
 export function Table<T>({
-  items,
-  columns,
-  rowKey,
+  items: propItems,
+  data,
+  columns: rawColumns,
+  rowKey: propRowKey,
+  keyField,
   sort,
   onSortChange,
+  onSort,
   onRowClick,
   heat,
+  getRowHeat,
+  getRowLink,
   loading = false,
   empty,
   className,
+  children,
 }: TableProps<T>) {
+  const navigate = useNavigate();
+
+  if (children) {
+    return (
+      <div className={cn('scroll-slim w-full overflow-x-auto', className)}>
+        <table className="w-full border-collapse text-sm">{children}</table>
+      </div>
+    );
+  }
+
+  const items = propItems ?? data ?? [];
+  const columns = (rawColumns ?? []).map((col) => {
+    const key = col.key ?? col.id ?? String(Math.random());
+    return {
+      ...col,
+      key,
+      sortField: col.sortField ?? (col.sortable ? key : undefined),
+      render: col.render ?? col.cell ?? (() => null),
+    };
+  });
+
+  const effectiveSortChange = onSortChange ?? onSort;
+  const effectiveHeat = heat ?? getRowHeat;
+  const effectiveRowClick =
+    onRowClick ?? (getRowLink ? (item: T) => navigate(getRowLink(item)) : undefined);
+
+  const getRowKey = (item: T): string => {
+    if (propRowKey) return propRowKey(item);
+    if (keyField && typeof item === 'object' && item !== null && keyField in item) {
+      return String((item as Record<string, unknown>)[keyField]);
+    }
+    if (typeof item === 'object' && item !== null && 'id' in item) {
+      return String((item as Record<string, unknown>).id);
+    }
+    return String(Math.random());
+  };
+
   if (loading && items.length === 0) return <SkeletonRows className={className} />;
   if (!loading && items.length === 0 && empty) return <>{empty}</>;
 
   const toggleSort = (field: string) => {
-    if (!onSortChange) return;
+    if (!effectiveSortChange) return;
     const dir: SortDirection = sort?.field === field && sort.dir === 'asc' ? 'desc' : 'asc';
-    onSortChange({ field, dir });
+    effectiveSortChange({ field, dir });
   };
 
-  const interactive = Boolean(onRowClick);
+  const interactive = Boolean(effectiveRowClick);
 
   return (
     <div className={cn('w-full', loading && 'opacity-60', className)}>
@@ -74,7 +127,7 @@ export function Table<T>({
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-ink-100">
-              {heat && <th className="w-[3px] p-0" aria-hidden="true" />}
+              {effectiveHeat && <th className="w-[3px] p-0" aria-hidden="true" />}
               {columns.map((column) => {
                 const active = sort?.field === column.sortField;
                 return (
@@ -90,7 +143,7 @@ export function Table<T>({
                       column.align === 'right' ? 'text-right' : 'text-left',
                     )}
                   >
-                    {column.sortField && onSortChange ? (
+                    {column.sortField && effectiveSortChange ? (
                       <button
                         type="button"
                         onClick={() => toggleSort(column.sortField as string)}
@@ -120,14 +173,14 @@ export function Table<T>({
           <tbody>
             {items.map((item) => (
               <tr
-                key={rowKey(item)}
-                onClick={onRowClick ? () => onRowClick(item) : undefined}
+                key={getRowKey(item)}
+                onClick={effectiveRowClick ? () => effectiveRowClick(item) : undefined}
                 onKeyDown={
-                  onRowClick
+                  effectiveRowClick
                     ? (event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault();
-                          onRowClick(item);
+                          effectiveRowClick(item);
                         }
                       }
                     : undefined
@@ -138,10 +191,10 @@ export function Table<T>({
                   interactive && 'cursor-pointer hover:bg-surface-app',
                 )}
               >
-                {heat && (
+                {effectiveHeat && (
                   <td className="p-0">
                     <div className="flex h-full min-h-[2.75rem] items-stretch py-1.5 pl-1.5">
-                      <HeatStripe heat={heat(item)} />
+                      <HeatStripe heat={effectiveHeat(item)} />
                     </div>
                   </td>
                 )}
@@ -172,17 +225,17 @@ export function Table<T>({
             (c) => c !== primary && c !== secondary && c.mobile !== 'desktop',
           );
           return (
-            <li key={rowKey(item)}>
+            <li key={getRowKey(item)}>
               <div
                 role={interactive ? 'button' : undefined}
                 tabIndex={interactive ? 0 : undefined}
-                onClick={onRowClick ? () => onRowClick(item) : undefined}
+                onClick={effectiveRowClick ? () => effectiveRowClick(item) : undefined}
                 onKeyDown={
-                  onRowClick
+                  effectiveRowClick
                     ? (event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault();
-                          onRowClick(item);
+                          effectiveRowClick(item);
                         }
                       }
                     : undefined
@@ -192,9 +245,9 @@ export function Table<T>({
                   interactive && 'cursor-pointer active:bg-surface-app',
                 )}
               >
-                {heat && <HeatStripe heat={heat(item)} />}
+                {effectiveHeat && <HeatStripe heat={effectiveHeat(item)} />}
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium text-ink-900">{primary.render(item)}</div>
+                  <div className="font-medium text-ink-900">{primary?.render(item)}</div>
                   {secondary && <div className="mt-0.5 text-xs text-ink-500">{secondary.render(item)}</div>}
                   {pairs.length > 0 && (
                     <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
@@ -215,5 +268,71 @@ export function Table<T>({
         })}
       </ul>
     </div>
+  );
+}
+
+export function TableHeader({ children, className }: { children: ReactNode; className?: string }) {
+  return <thead className={cn('border-b border-ink-100', className)}>{children}</thead>;
+}
+
+export function TableBody({ children, className }: { children: ReactNode; className?: string }) {
+  return <tbody className={cn('divide-y divide-ink-100', className)}>{children}</tbody>;
+}
+
+export function TableRow({
+  children,
+  className,
+  onClick,
+}: {
+  children: ReactNode;
+  className?: string;
+  onClick?: (event: React.MouseEvent) => void;
+}) {
+  return (
+    <tr className={cn('hover:bg-surface-app/50 transition-colors', className)} onClick={onClick}>
+      {children}
+    </tr>
+  );
+}
+
+export function TableHead({
+  children,
+  className,
+  style,
+}: {
+  children?: ReactNode;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <th
+      style={style}
+      className={cn(
+        'px-3 py-2 text-left text-2xs font-semibold uppercase tracking-wide text-ink-300',
+        className,
+      )}
+    >
+      {children}
+    </th>
+  );
+}
+
+export function TableCell({
+  children,
+  className,
+  colSpan,
+  style,
+  onClick,
+}: {
+  children?: ReactNode;
+  className?: string;
+  colSpan?: number;
+  style?: CSSProperties;
+  onClick?: (event: React.MouseEvent) => void;
+}) {
+  return (
+    <td colSpan={colSpan} style={style} onClick={onClick} className={cn('px-3 py-2.5 text-sm text-ink-700', className)}>
+      {children}
+    </td>
   );
 }

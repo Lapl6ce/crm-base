@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn';
 import { can, type Action } from '@/lib/rbac';
 import type { User } from '@/data/types';
 import { IconArrowRight, IconSearch } from '@/components/icons';
-import { primaryNav, secondaryNav } from './navigation';
+import { allNavItems } from './navigation';
 
 /* The command bar (CONTEXT.md §4). Half of the signature, and the reason the
    app feels fast rather than clicked-through.
@@ -66,10 +66,10 @@ export function CommandBar({ open, onClose, user, extraItems = [] }: CommandBarP
 
   const navItems = useMemo<CommandItem[]>(
     () =>
-      [...primaryNav, ...secondaryNav].map((item) => ({
+      allNavItems.map((item) => ({
         id: `nav:${item.to}`,
         label: item.label,
-        group: 'Go to',
+        group: item.sectionLabel,
         hint: item.to,
         icon: <item.icon size={16} />,
         requires: item.requires,

@@ -1,5 +1,5 @@
-import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { cn } from '@/lib/cn';
+import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { IconChevronDown, IconSearch } from './icons';
 
 /* Form controls. Every one of them wires label -> control -> error through real
@@ -23,7 +23,7 @@ export interface FieldProps {
   error?: string;
   required?: boolean;
   className?: string;
-  children: (ids: { id: string; describedBy?: string; invalid: boolean }) => ReactNode;
+  children: ((ids: { id: string; describedBy?: string; invalid: boolean }) => ReactNode) | ReactNode;
 }
 
 export function Field({ label, hideLabel, hint, error, required, className, children }: FieldProps) {
@@ -49,7 +49,9 @@ export function Field({ label, hideLabel, hint, error, required, className, chil
         )}
       </label>
 
-      {children({ id, describedBy: describedBy || undefined, invalid: Boolean(error) })}
+      {typeof children === 'function'
+        ? children({ id, describedBy: describedBy || undefined, invalid: Boolean(error) })
+        : children}
 
       {hint && !error && (
         <p id={hintId} className="text-xs text-ink-300">

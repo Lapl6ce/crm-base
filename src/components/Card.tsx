@@ -1,5 +1,5 @@
-import type { HTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
+import type { HTMLAttributes, ReactNode } from 'react';
 
 /* The work surface. White, 8px radius, one shadow — every panel in the app is
    this or a Table. */
@@ -15,10 +15,12 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 
 export function CardHeader({
   title,
+  description,
   action,
   className,
 }: {
   title: ReactNode;
+  description?: ReactNode;
   action?: ReactNode;
   className?: string;
 }) {
@@ -29,7 +31,10 @@ export function CardHeader({
         className,
       )}
     >
-      <h2 className="font-display text-base font-semibold text-ink-900">{title}</h2>
+      <div>
+        <h2 className="font-display text-base font-semibold text-ink-900">{title}</h2>
+        {description && <p className="mt-0.5 text-xs text-ink-500">{description}</p>}
+      </div>
       {action}
     </div>
   );

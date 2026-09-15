@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { tokens } from '@/lib/tokens';
+import type { ReactNode } from 'react';
 
 /* Empty states say what to do next and give the control to do it — never
    "No data" (CONTEXT.md §4).
@@ -13,6 +13,7 @@ export interface EmptyStateProps {
   title: string;
   /** One sentence of instruction. Say the next action, not the situation. */
   description: string;
+  icon?: ReactNode;
   action?: ReactNode;
   secondaryAction?: ReactNode;
   className?: string;
@@ -23,6 +24,7 @@ export interface EmptyStateProps {
 export function EmptyState({
   title,
   description,
+  icon,
   action,
   secondaryAction,
   className,
@@ -36,7 +38,11 @@ export function EmptyState({
         className,
       )}
     >
-      <StripeMark compact={size === 'sm'} />
+      {icon ? (
+        <div className="flex items-center justify-center text-ink-300">{icon}</div>
+      ) : (
+        <StripeMark compact={size === 'sm'} />
+      )}
       <h3 className={cn('font-display font-semibold text-ink-900', size === 'md' ? 'text-md' : 'text-base')}>
         {title}
       </h3>
