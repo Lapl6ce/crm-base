@@ -19,11 +19,15 @@ export type ISODateString = string;
 
 export type Role = 'admin' | 'sales_rep';
 
+/** Which department's modules a user works in. Unset means "sees everything". */
+export type Team = 'sales' | 'operations' | 'finance' | 'management';
+
 export interface User {
   id: ID;
   name: string;
   email: string;
   role: Role;
+  team?: Team;
   /** Token-derived hex, for initials chips. */
   avatarColor: string;
   createdAt: ISODateString;

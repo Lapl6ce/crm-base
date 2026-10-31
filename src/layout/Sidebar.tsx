@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/cn';
-import { can } from '@/lib/rbac';
 import type { User } from '@/data/types';
 import { IconChevronDown } from '@/components/icons';
 /* DEMO TOUCHPOINT 1 of 2. Deleting src/demo/ breaks this import and the footer
    block below; nothing else in the frame knows Demo Mode exists. */
 import { DemoBadge } from '@/demo/DemoBadge';
 import { useDemoMode } from '@/demo/useDemoMode';
-import { navigationSections, type NavSection } from './navigation';
+import { navigationSections, visibleSections as sectionsFor, type NavSection } from './navigation';
 
 export interface SidebarProps {
   user: User | null;
@@ -43,13 +42,7 @@ export function Sidebar({ user, companyName, collapsed, onNavigate }: SidebarPro
     setOpenSections((prev) => ({ ...prev, [sectionId]: !prev[sectionId] }));
   };
 
-  const visibleSections = navigationSections
-    .filter((sec) => !sec.requires || can(user, sec.requires))
-    .map((sec) => ({
-      ...sec,
-      items: sec.items.filter((item) => !item.requires || can(user, item.requires)),
-    }))
-    .filter((sec) => sec.items.length > 0);
+  const visibleSections = sectionsFor(user);
 
   return (
     <nav

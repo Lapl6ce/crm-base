@@ -7,6 +7,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { ActionCenterPage } from '@/features/dashboard/action-center/ActionCenterPage';
 import { ActivityFeedPage } from '@/features/dashboard/activity-feed/ActivityFeedPage';
 import { AIInsightsPage } from '@/features/dashboard/ai-insights/AIInsightsPage';
+import { OverviewPage } from '@/features/dashboard/overview/OverviewPage';
 import { RevenueProfitPage } from '@/features/dashboard/revenue-profit/RevenueProfitPage';
 
 // CRM
@@ -57,11 +58,12 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        {/* Default redirect to Revenue & Profit Overview */}
-        <Route index element={<Navigate to="/dashboard/revenue-profit" replace />} />
-        <Route path="dashboard" element={<Navigate to="/dashboard/revenue-profit" replace />} />
+        {/* Default redirect to the Business Overview */}
+        <Route index element={<Navigate to="/dashboard/overview" replace />} />
+        <Route path="dashboard" element={<Navigate to="/dashboard/overview" replace />} />
 
-        {/* 1. Dashboard (4 submodules) */}
+        {/* 1. Dashboard (5 submodules) */}
+        <Route path="dashboard/overview" element={<OverviewPage />} />
         <Route path="dashboard/revenue-profit" element={<RevenueProfitPage />} />
         <Route path="dashboard/action-center" element={<ActionCenterPage />} />
         <Route path="dashboard/activity-feed" element={<ActivityFeedPage />} />

@@ -9,17 +9,23 @@ import { Table, type Column } from '@/components/Table';
 import { Tag } from '@/components/Tag';
 import { toast } from '@/components/Toast';
 import { fieldErrors, formMessage } from '@/data/formErrors';
-import type { ID, Role, User } from '@/data/types';
+import type { ID, Role, Team, User } from '@/data/types';
 import { useMutation, useResource } from '@/data/useResource';
 import { useSession } from '@/data/useSession';
 import { PageHeader } from '@/layout/PageHeader';
 import { formatDate } from '@/lib/format';
 import { can, roleLabel } from '@/lib/rbac';
+import { TEAMS, teamLabel } from '@/lib/teams';
 import { useState, type FormEvent } from 'react';
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: 'admin', label: roleLabel.admin },
   { value: 'sales_rep', label: roleLabel.sales_rep },
+];
+
+const TEAM_OPTIONS: { value: Team | ''; label: string }[] = [
+  { value: '', label: 'No team — sees every module' },
+  ...TEAMS.map((team) => ({ value: team.value, label: team.label })),
 ];
 
 export function UsersPage() {
@@ -82,6 +88,14 @@ export function UsersPage() {
       ),
     },
     {
+      key: 'team',
+      header: 'Team',
+      sortField: 'team',
+      width: '9rem',
+      render: (user) =>
+        user.team ? <Tag>{teamLabel[user.team]}</Tag> : <span className="text-xs text-ink-300">All modules</span>,
+    },
+    {
       key: 'created',
       header: 'Added',
       sortField: 'createdAt',
@@ -132,7 +146,7 @@ export function UsersPage() {
       <PageHeader
         title="Users & Team Directory"
         meta={loading ? undefined : `${users.length} users · ${admins} admin`}
-        description="Roles determine accessible actions and modules across the CRM."
+        description="Roles decide what a user may do; teams decide which modules they see."
         actions={
           canManage && (
             <Button
@@ -190,6 +204,24 @@ export function UsersPage() {
         </CardBody>
       </Card>
 
+      <Card>
+        <CardHeader title="Teams" />
+        <CardBody>
+          <p className="text-base text-ink-500">
+            A team narrows the sidebar to that department&rsquo;s modules. Admins, Management and users
+            without a team see everything. Use &ldquo;View as&rdquo; above to check what a team member sees.
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {TEAMS.map((team) => (
+              <div key={team.value}>
+                <Tag>{team.label}</Tag>
+                <p className="mt-2 text-base text-ink-500">{team.description}</p>
+              </div>
+            ))}
+          </div>
+        </CardBody>
+      </Card>
+
       <UserForm
         open={formOpen}
         onClose={() => setFormOpen(false)}
@@ -210,6 +242,8 @@ export function UsersPage() {
   );
 }
 
+type UserInput = { name: string; email: string; role: Role; team?: Team };
+
 function UserForm({
   open,
   onClose,
@@ -224,14 +258,10 @@ function UserForm({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('sales_rep');
+  const [team, setTeam] = useState<Team | ''>('');
 
-  const create = useMutation((provider, input: { name: string; email: string; role: Role }) =>
-    provider.users.create(input),
-  );
-  const update = useMutation(
-    (provider, id: ID, patch: { name: string; email: string; role: Role }) =>
-      provider.users.update(id, patch),
-  );
+  const create = useMutation((provider, input: UserInput) => provider.users.create(input));
+  const update = useMutation((provider, id: ID, patch: UserInput) => provider.users.update(id, patch));
 
   const pending = create.pending || update.pending;
   const errors = { ...fieldErrors(create.error), ...fieldErrors(update.error) };
@@ -244,6 +274,7 @@ function UserForm({
       setName(user?.name ?? '');
       setEmail(user?.email ?? '');
       setRole(user?.role ?? 'sales_rep');
+      setTeam(user?.team ?? '');
       create.reset();
       update.reset();
     }
@@ -251,7 +282,7 @@ function UserForm({
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    const payload = { name: name.trim(), email: email.trim(), role };
+    const payload = { name: name.trim(), email: email.trim(), role, team: team || undefined };
     try {
       if (user) {
         await update.run(user.id, payload);
@@ -329,6 +360,18 @@ function UserForm({
               disabled={lastAdmin}
               onChange={(event) => setRole(event.target.value as Role)}
               options={ROLE_OPTIONS}
+            />
+          )}
+        </Field>
+
+        <Field label="Team" hint="Which department's modules appear in this user's sidebar.">
+          {({ id, describedBy }) => (
+            <Select
+              id={id}
+              aria-describedby={describedBy}
+              value={team}
+              onChange={(event) => setTeam(event.target.value as Team | '')}
+              options={TEAM_OPTIONS}
             />
           )}
         </Field>

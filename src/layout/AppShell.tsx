@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/cn';
-import { can } from '@/lib/rbac';
 import { applyAccent } from '@/lib/tokens';
 import { useSession } from '@/data/useSession';
 import { Toaster } from '@/components/Toast';
@@ -10,7 +9,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { RouteAnnouncer } from './RouteAnnouncer';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
-import { allNavItems, type NavSubItem } from './navigation';
+import { visibleNavItems, type NavSubItem } from './navigation';
 
 /* The frame every route renders inside.
  *
@@ -37,8 +36,8 @@ export function AppShell() {
   // small thing that feels broken.
   useEffect(() => setMobileNavOpen(false), [location.pathname]);
 
-  const mobileItems = allNavItems
-    .filter((item) => item.mobile && (!item.requires || can(user, item.requires)))
+  const mobileItems = visibleNavItems(user)
+    .filter((item) => item.mobile)
     .slice(0, 5);
 
   const companyName = settings?.company.name ?? 'CRM';

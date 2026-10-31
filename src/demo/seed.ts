@@ -117,7 +117,8 @@ export async function seedDemoData(
       // A duplicate email on a re-seed is not worth failing the whole run for.
     }
   }
-  const reps = users.filter((u) => u.role === 'sales_rep');
+  // Pipeline records belong to the sales team; operations and finance users own none.
+  const reps = users.filter((u) => u.role === 'sales_rep' && (!u.team || u.team === 'sales'));
   const owner = () => (reps.length > 0 ? pick(reps) : users[0]);
 
   /* --- pipeline ---------------------------------------------------------- */

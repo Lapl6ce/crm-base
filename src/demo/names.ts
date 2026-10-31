@@ -96,8 +96,10 @@ export const NOTE_BODIES = [
 ];
 
 export const DEMO_USERS = [
-  { name: 'Rosa Whitfield', email: 'rosa@example.com', role: 'admin' as const },
-  { name: 'Idris Okonkwo', email: 'idris@example.com', role: 'sales_rep' as const },
-  { name: 'Hana Lindqvist', email: 'hana@example.com', role: 'sales_rep' as const },
-  { name: 'Callum Brennan', email: 'callum@example.com', role: 'sales_rep' as const },
+  { name: 'Rosa Whitfield', email: 'rosa@example.com', role: 'admin' as const, team: 'management' as const },
+  { name: 'Idris Okonkwo', email: 'idris@example.com', role: 'sales_rep' as const, team: 'sales' as const },
+  { name: 'Hana Lindqvist', email: 'hana@example.com', role: 'sales_rep' as const, team: 'sales' as const },
+  { name: 'Callum Brennan', email: 'callum@example.com', role: 'sales_rep' as const, team: 'sales' as const },
+  { name: 'Priya Raman', email: 'priya@example.com', role: 'sales_rep' as const, team: 'operations' as const },
+  { name: 'Tomás Ferreira', email: 'tomas@example.com', role: 'sales_rep' as const, team: 'finance' as const },
 ];
